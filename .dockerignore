@@ -1,0 +1,7 @@
+.git
+.agents
+.aws
+.codex
+.env
+internal/api/generated.go
+catalog-service

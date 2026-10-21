@@ -1,0 +1,1040 @@
+openapi: 3.0.3
+info:
+  title: Marketplace API
+  version: 2.0.0
+security:
+- bearerAuth: []
+paths:
+  /products:
+    post:
+      operationId: CreateProduct
+      description: SELLER и ADMIN создают товар. Владельцем становится текущий пользователь.
+      responses:
+        '201':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+    get:
+      operationId: ListProducts
+      description: 'USER, SELLER, ADMIN: все товары. category — точное совпадение.
+        Сортировка по id.'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '500':
+          $ref: '#/components/responses/Error500'
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 20
+      - name: status
+        in: query
+        schema:
+          $ref: '#/components/schemas/ProductStatus'
+      - name: category
+        in: query
+        schema:
+          type: string
+  /products/{id}:
+    get:
+      operationId: GetProduct
+      description: 'USER, SELLER, ADMIN: любой товар, включая ARCHIVED.'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '500':
+          $ref: '#/components/responses/Error500'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+    put:
+      operationId: UpdateProduct
+      description: 'SELLER: только свой товар. ADMIN: любой. Полная замена изменяемых
+        полей.'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+    delete:
+      operationId: DeleteProduct
+      description: 'SELLER: только свой товар. ADMIN: любой. Мягкое удаление: ARCHIVED.'
+      responses:
+        '204':
+          description: Успешный ответ
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '500':
+          $ref: '#/components/responses/Error500'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+  /orders:
+    post:
+      operationId: CreateOrder
+      description: 'USER, ADMIN. Проверки: лимит → активный заказ → каталог → остатки
+        → резерв → цены → промокод. Всё в одной транзакции.'
+      responses:
+        '201':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+  /orders/{id}:
+    get:
+      operationId: GetOrder
+      description: 'USER: только свой заказ. ADMIN: любой. SELLER: запрещено.'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '500':
+          $ref: '#/components/responses/Error500'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+    put:
+      operationId: UpdateOrder
+      description: 'USER: только свой заказ. ADMIN: любой. Только CREATED; пересчёт
+        по текущим ценам. Повторная проверка промокода, свой резерв не считается новым
+        использованием.'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderUpdate'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+  /orders/{id}/cancel:
+    post:
+      operationId: CancelOrder
+      description: 'USER: только свой заказ. ADMIN: любой. Отмена из CREATED/PAYMENT_PENDING
+        с возвратом остатков и использования промокода.'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+  /orders/{id}/status:
+    post:
+      operationId: ChangeOrderStatus
+      description: Только ADMIN. CREATED → PAYMENT_PENDING → PAID → SHIPPED → COMPLETED.
+        Отмена — отдельным методом.
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusUpdate'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+  /promo-codes:
+    post:
+      operationId: CreatePromoCode
+      description: 'SELLER, ADMIN. Промокоды общие для каталога. PERCENTAGE свыше
+        70%: скидка 0 (полная цена); FIXED_AMOUNT не больше суммы заказа. Округление
+        до копеек.'
+      responses:
+        '201':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoCodeResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoCodeCreate'
+  /auth/register:
+    post:
+      operationId: Register
+      description: Публичная регистрация USER (по умолчанию) или SELLER. ADMIN назначается
+        через БД.
+      responses:
+        '201':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      security: []
+  /auth/login:
+    post:
+      operationId: Login
+      description: 'Публичный вход. Access token: 15 минут, refresh token: 7 дней.'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      security: []
+  /auth/refresh:
+    post:
+      operationId: Refresh
+      description: Публичное обновление пары токенов. Refresh JWT принимается только
+        здесь.
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '500':
+          $ref: '#/components/responses/Error500'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      security: []
+  /health:
+    get:
+      operationId: Health
+      description: Проверка HTTP-сервера из ДЗ1.
+      security: []
+      responses:
+        '200':
+          description: ok
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ProductStatus:
+      type: string
+      enum:
+      - ACTIVE
+      - INACTIVE
+      - ARCHIVED
+    OrderStatus:
+      type: string
+      enum:
+      - CREATED
+      - PAYMENT_PENDING
+      - PAID
+      - SHIPPED
+      - COMPLETED
+      - CANCELED
+    Role:
+      type: string
+      enum:
+      - USER
+      - SELLER
+      - ADMIN
+    DiscountType:
+      type: string
+      enum:
+      - PERCENTAGE
+      - FIXED_AMOUNT
+    ProductCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - price
+      - stock
+      - category
+      - status
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 4000
+          nullable: true
+        price:
+          type: number
+          format: decimal
+          minimum: 0.01
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        stock:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        category:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+    ProductUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - price
+      - stock
+      - category
+      - status
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 4000
+          nullable: true
+        price:
+          type: number
+          format: decimal
+          minimum: 0.01
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        stock:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        category:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+    ProductResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - price
+      - stock
+      - category
+      - status
+      - seller_id
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 4000
+          nullable: true
+        price:
+          type: number
+          format: decimal
+          minimum: 0.01
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        stock:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        category:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+        seller_id:
+          type: integer
+          format: int64
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ProductPage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - totalElements
+      - page
+      - size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductResponse'
+        totalElements:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    OrderItemInput:
+      type: object
+      additionalProperties: false
+      required:
+      - product_id
+      - quantity
+      properties:
+        product_id:
+          type: integer
+          format: int64
+          minimum: 1
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 999
+    OrderCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/OrderItemInput'
+        promo_code:
+          type: string
+          pattern: ^[A-Z0-9_]{4,20}$
+    OrderUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/OrderItemInput'
+    OrderItemResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - product_id
+      - quantity
+      - price_at_order
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        product_id:
+          type: integer
+          format: int64
+          minimum: 1
+        quantity:
+          type: integer
+        price_at_order:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+    OrderResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - user_id
+      - status
+      - promo_code_id
+      - items
+      - total_amount
+      - discount_amount
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        user_id:
+          type: integer
+          format: int64
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        promo_code_id:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemResponse'
+        total_amount:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        discount_amount:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    OrderStatusUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+    PromoCodeCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - discount_type
+      - discount_value
+      - min_order_amount
+      - max_uses
+      - valid_from
+      - valid_until
+      - active
+      properties:
+        code:
+          type: string
+          pattern: ^[A-Z0-9_]{4,20}$
+        discount_type:
+          $ref: '#/components/schemas/DiscountType'
+        discount_value:
+          type: number
+          format: decimal
+          minimum: 0.01
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        min_order_amount:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        max_uses:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        valid_from:
+          type: string
+          format: date-time
+        valid_until:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+    PromoCodeResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - code
+      - discount_type
+      - discount_value
+      - min_order_amount
+      - max_uses
+      - valid_from
+      - valid_until
+      - active
+      - current_uses
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        code:
+          type: string
+          pattern: ^[A-Z0-9_]{4,20}$
+        discount_type:
+          $ref: '#/components/schemas/DiscountType'
+        discount_value:
+          type: number
+          format: decimal
+          minimum: 0.01
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        min_order_amount:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 9999999999.99
+          multipleOf: 0.01
+          x-go-type: decimal.Decimal
+          x-go-type-import:
+            path: github.com/shopspring/decimal
+        max_uses:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        valid_from:
+          type: string
+          format: date-time
+        valid_until:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+        current_uses:
+          type: integer
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - username
+      - password
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+        role:
+          type: string
+          enum:
+          - USER
+          - SELLER
+          default: USER
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - username
+      - password
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 1
+          maxLength: 72
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+    UserResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - username
+      - role
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - access_token
+      - refresh_token
+      - token_type
+      - expires_in
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - error_code
+      - message
+      properties:
+        error_code:
+          type: string
+          enum:
+          - PRODUCT_NOT_FOUND
+          - PRODUCT_INACTIVE
+          - ORDER_NOT_FOUND
+          - ORDER_LIMIT_EXCEEDED
+          - ORDER_HAS_ACTIVE
+          - INVALID_STATE_TRANSITION
+          - INSUFFICIENT_STOCK
+          - PROMO_CODE_INVALID
+          - PROMO_CODE_MIN_AMOUNT
+          - ORDER_OWNERSHIP_VIOLATION
+          - VALIDATION_ERROR
+          - TOKEN_EXPIRED
+          - TOKEN_INVALID
+          - REFRESH_TOKEN_INVALID
+          - ACCESS_DENIED
+          - USERNAME_TAKEN
+          - INVALID_CREDENTIALS
+          - PROMO_CODE_EXISTS
+          - INTERNAL_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+  responses:
+    Error400:
+      description: 'VALIDATION_ERROR: Нарушение контракта; details.violations содержит
+        поля и нарушения'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Error401:
+      description: 'TOKEN_EXPIRED: Access token истёк; TOKEN_INVALID: Access token
+        отсутствует или невалиден; REFRESH_TOKEN_INVALID: Refresh token невалиден
+        или истёк; INVALID_CREDENTIALS: Неверное имя пользователя или пароль'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Error403:
+      description: 'ORDER_OWNERSHIP_VIOLATION: Заказ принадлежит другому пользователю;
+        ACCESS_DENIED: Недостаточно прав'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Error404:
+      description: 'PRODUCT_NOT_FOUND: Товар не найден; ORDER_NOT_FOUND: Заказ не
+        найден'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Error409:
+      description: 'PRODUCT_INACTIVE: Товар неактивен; ORDER_HAS_ACTIVE: У пользователя
+        уже есть активный заказ; INVALID_STATE_TRANSITION: Недопустимое состояние
+        или переход; INSUFFICIENT_STOCK: Недостаточно остатков; details.products содержит
+        product_id, requested, available; USERNAME_TAKEN: Имя пользователя занято;
+        PROMO_CODE_EXISTS: Промокод уже существует'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Error422:
+      description: 'PROMO_CODE_INVALID: Промокод не найден, неактивен, истёк или исчерпан;
+        PROMO_CODE_MIN_AMOUNT: Сумма заказа ниже минимальной'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Error429:
+      description: 'ORDER_LIMIT_EXCEEDED: Операция выполнена менее N минут назад'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Error500:
+      description: 'INTERNAL_ERROR: Ошибка сервера'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
